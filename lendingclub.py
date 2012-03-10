@@ -273,11 +273,12 @@ class LcDataExtractedFeatures:
             
 class LcPlotter:
 
-    def __init__(self, raw_data, normalized_data, features, targets):
+    def __init__(self, raw_data, normalized_data, features, targets):        
         self.features = features
         self.raw_data = raw_data.copy()
         self.normalized_data = normalized_data.copy()
         self.targets = targets
+        subprocess.call(["mkdir", "plots"])
 
     def plot_correlations(self):
         smoothing_window = max(1, int(len(self.raw_data[self.targets[0]]) / 50))
@@ -307,7 +308,7 @@ class LcData:
         def clean_csv():
             print "Reading csv from file %s" % (fname)
             reader = csv.reader(open(fname, 'rb'))
-            cleaned_fname = "/tmp/%s-%s" % (fname, random.random())
+            cleaned_fname = "/tmp/lc-%s.csv" % (random.random())
             print "Cleaning csv file using python csv library, writing new file to %s" % (cleaned_fname)
             writer = csv.writer(open(cleaned_fname, 'wb'))
             for i, row in enumerate(reader):
@@ -332,88 +333,9 @@ class LcData:
         subprocess.call(["rm", "-rf", cleaned_fname])
         print "Done."
 
-    def get_data(self):
-        return self.data
-
     def exclude_values(self, col, values):
         indexes = numpy.where(numpy.all([self.data[col] != v for v in values], axis=0))
-        return self.data[indexes]
-
-    def create_plots(self, base_dir="plots"):
-        def partition(values, xs, ys):
-            if len(xs) != len(ys):
-                raise Exception("xs and ys must be the same length")
-            dict_vals = {}
-            partitioned = []
-            for i, v in enumerate(values):
-                dict_vals[v] = i
-                partitioned.append([])
-
-            for i, x in enumerate(xs):
-                if x == None: continue
-                partitioned[dict_vals[x]].append(ys[i])
-            return partitioned
-
-        def get_unique_values(xs, max_unique_values=50):
-            uniq_vals = {}
-            for x in xs:
-                if x == None: continue # remove this
-                if x not in uniq_vals:
-                    uniq_vals[x] = True
-                    if len(uniq_vals) > max_unique_values:
-                        return None
-            return uniq_vals.keys()
-        #cols = ['amount_requested', 'interest_rate', 'loan_length', 'application_date', 'employment_length', 'credit_grade', 'monthly_payment', 'monthly_income', 'status', 'debt_to_income_ratio', 'home_ownership', 'monthly_income', 'fico_range', 'earliest_credit_line', 'open_credit_lines', 'total_credit_lines', 'revolving_credit_balance', 'revolving_line_utilization', 'inquiries_in_the_last_6_months', 'accounts_now_delinquent', 'delinquent_amount', 'delinquencies__last_2_yrs_', 'public_records_on_file', 'months_since_last_record']
-        cols = ['amount_requested', 'interest_rate', 'loan_length', 'application_date', 'employment_length', 'credit_grade', 'monthly_payment', 'monthly_income', 'status', 'debt_to_income_ratio', 'home_ownership', 'monthly_income', 'fico_range', 'earliest_credit_line', 'open_credit_lines', 'total_credit_lines', 'revolving_credit_balance', 'revolving_line_utilization', 'accounts_now_delinquent', 'public_records_on_file']
-
-        unique_col_values = {}
-        for c in cols: unique_col_values[c] = get_unique_values(self.data[c])            
-        
-        smoothing_window = max(1, int(len(self.data[cols[0]]) / 100))
-        print "Creating plots with smoothing window %d" % (smoothing_window)
-        for cx in cols:
-            print "cx: %s, sample values: %s" % (cx, self.data[cx][0:10])
-
-        for cx in cols:
-            print "Creating plots for cx: %s" % (cx)
-            self.data.sort(order=cx)
-            plt.figure()
-            
-            if unique_col_values[cx] != None:
-                unique_value_counts = map(len, partition(unique_col_values[cx], self.data[cx], self.data[cx]))
-                plt.bar(range(0,len(unique_value_counts)), unique_value_counts)
-                plt.axes().set_xticklabels(unique_col_values[cx])
-            else:
-                try:
-                    hist_xs = self.data[cx]                
-                    if type(self.data[cx][0]) == datetime.date:
-                        hist_xs = map(lambda x: time.mktime(x.timetuple()), self.data[cx])
-                        plt.hist(hist_xs)
-                except:
-                    print "Could not create histogram for %s" % (cx)
-
-            plt.xlabel(cx)
-            plt.title("hist for %s" % (cx))
-            plt.savefig("%s/%s_hist" % (base_dir, cx))
-            continue
-            for cy in cols:
-                if cx == cy: continue
-                if self.data[cy].dtype == 'object' or str(self.data[cy].dtype).find('|S') >= 0: continue
-                if unique_col_values[cy] != None: continue
-                try:
-                    plt.figure()
-                    if unique_col_values[cx] == None:
-                        convolved_y = numpy.convolve(self.data[cy], numpy.ones(smoothing_window, 'd')/smoothing_window, 'same')
-                        plt.plot(self.data[cx], convolved_y)
-                    else:                    
-                        plt.boxplot(partition(unique_col_values[cx], self.data[cx], self.data[cy]))
-                        plt.axes().set_xticklabels(map(str, unique_col_values[cx]))
-                    plt.xlabel(cx)
-                    plt.ylabel(cy)
-                    plt.savefig("%s/%s_x_%s" % (base_dir, cx, cy))
-                except:
-                    print "Error creating graph (%s, %s)" % (cx, cy)
-                    
+        return self.data[indexes]                    
 
 def run(filename):
     lc_data = LcData()                              
@@ -428,8 +350,6 @@ def run(filename):
     plotter.plot_correlations()
     lc_learner = LcLearner(lc_data_features.data, csv_data)
     lc_learner.evaluate_all(features, 'status')
-    #lc_learner.cv_all(['one', 'amount_requested', 'application_date', 'credit_grade'], 'interest_rate')
-    #lc_data.create_plots()
 
 if __name__ == '__main__': 
     run(sys.argv[1])

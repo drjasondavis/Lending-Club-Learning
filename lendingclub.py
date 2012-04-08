@@ -144,15 +144,6 @@ class LcLearner:
 
         returns = []
 
-        plt.figure()
-        plt.hist(b_test, 10)
-        plt.savefig("/tmp/hist_b.png");
-
-        plt.figure()
-        plt.hist(preds, 10)
-        plt.savefig("/tmp/hist_preds.png");
-
-
         for i, actual_return in enumerate(loan_values['actual_irate']):
             if loan_values['irate'][i] > MAX_INTEREST_RATE_TO_INVEST: continue
             # if i < 100: print "%d: %.4f %.4f %.4f" % (i, actual_return, loan_values['pred_irate'][i], loan_values['irate'][i])
@@ -273,7 +264,6 @@ class LcDataExtractedFeatures:
 
     def parse_credit_rating(self, d, col):
         return map(lambda x: ((ord(x[0]) - ord('A')) * 5) + int(x[1]), d[col])
-        #return map(lambda x: ((ord(x[0]) - ord('A')) * 1), d[col])
 
     def parse_status(self, d, col):
         def loan_status_collection_probability(status):
